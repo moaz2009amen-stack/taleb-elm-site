@@ -1,0 +1,949 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>طالب علم — رتّب مذاكرتك</title>
+<meta name="description" content="طالب علم: التطبيق اللي بيرتب مذاكرتك لثانوية العامة والبكالوريا المصرية.">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:title" content="طالب علم — رتّب مذاكرتك">
+<meta property="og:description" content="التطبيق اللي بيرتب مذاكرتك لثانوية العامة والبكالوريا المصرية.">
+<meta property="og:image" content="og-image.png">
+<meta property="og:locale" content="ar_EG">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="طالب علم — رتّب مذاكرتك">
+<meta name="twitter:image" content="og-image.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#05070f;
+  --bg-2:#090d1c;
+  --bg-3:#0d1330;
+  --glass:rgba(255,255,255,.045);
+  --glass-2:rgba(255,255,255,.08);
+  --border:rgba(255,255,255,.12);
+  --border-soft:rgba(255,255,255,.07);
+  --text:#eef1f8;
+  --muted:#8d97b8;
+  --mint:#23eab0;
+  --cyan:#37d8ff;
+  --violet:#8b7bff;
+  --grad-brand:linear-gradient(95deg,var(--mint),var(--cyan));
+  --font-d:'Cairo',sans-serif;
+  --font-b:'IBM Plex Sans Arabic',sans-serif;
+  --maxw:1180px;
+  --ease:cubic-bezier(.16,.84,.28,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);color:var(--text);font-family:var(--font-b);
+  line-height:1.7;overflow-x:hidden;-webkit-font-smoothing:antialiased;
+  cursor:default;
+}
+img,svg{display:block;max-width:100%}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px;position:relative;z-index:2}
+.icon{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+::selection{background:var(--mint);color:#02150f}
+
+/* ===== background canvas + ambient glows ===== */
+#netCanvas{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.55}
+.ambient{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.ambient i{
+  position:absolute;border-radius:50%;filter:blur(90px);opacity:.35;
+  animation:float-blob 18s ease-in-out infinite;
+}
+.ambient i:nth-child(1){width:520px;height:520px;background:var(--mint);top:-10%;right:-10%;animation-delay:0s}
+.ambient i:nth-child(2){width:460px;height:460px;background:var(--violet);bottom:0%;left:-12%;animation-delay:-6s}
+.ambient i:nth-child(3){width:380px;height:380px;background:var(--cyan);top:40%;left:35%;animation-delay:-11s;opacity:.2}
+@keyframes float-blob{
+  0%,100%{transform:translate(0,0) scale(1)}
+  50%{transform:translate(-40px,50px) scale(1.15)}
+}
+
+/* ===== cursor glow ===== */
+.cursor-glow{
+  position:fixed;top:0;left:0;width:26px;height:26px;border-radius:50%;
+  background:radial-gradient(circle,rgba(35,234,176,.9),rgba(35,234,176,0) 70%);
+  filter:blur(4px);pointer-events:none;z-index:9999;mix-blend-mode:screen;
+  transform:translate(-50%,-50%);opacity:0;transition:opacity .3s;
+}
+.cursor-glow.on{opacity:1}
+
+/* ===== loader ===== */
+#loader{
+  position:fixed;inset:0;z-index:10000;background:var(--bg);
+  display:flex;align-items:center;justify-content:center;
+  transition:opacity .7s var(--ease), visibility .7s;
+}
+#loader.hide{opacity:0;visibility:hidden}
+#loader svg{width:56px;height:56px;color:var(--mint)}
+#loader .lp{stroke-dasharray:120;stroke-dashoffset:120;animation:draw 1.1s var(--ease) forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+
+/* ===== reveal utility ===== */
+[data-reveal]{opacity:0;transform:translateY(26px);transition:opacity .8s var(--ease), transform .8s var(--ease)}
+[data-reveal].in{opacity:1;transform:translateY(0)}
+[data-reveal="scale"]{transform:translateY(0) scale(.92)}
+[data-reveal="scale"].in{transform:scale(1)}
+
+/* ===== glass component ===== */
+.glass{
+  background:var(--glass);border:1px solid var(--border-soft);
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  border-radius:22px;position:relative;
+}
+.glass::before{
+  content:'';position:absolute;inset:0;border-radius:inherit;padding:1px;
+  background:linear-gradient(135deg,rgba(255,255,255,.22),rgba(255,255,255,0) 40%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;
+}
+.tilt{transition:transform .35s var(--ease), box-shadow .35s}
+.tilt:hover{box-shadow:0 30px 70px -30px rgba(35,234,176,.25)}
+
+/* ===== buttons ===== */
+.btn{
+  display:inline-flex;align-items:center;gap:9px;font-family:var(--font-d);font-weight:700;
+  font-size:15px;padding:14px 28px;border-radius:999px;border:none;cursor:pointer;
+  position:relative;transition:transform .25s var(--ease);
+}
+.btn-mint{background:var(--grad-brand);color:#02180f;box-shadow:0 0 0 0 rgba(35,234,176,.5)}
+.btn-mint span{position:relative;z-index:2}
+.btn-mint::after{
+  content:'';position:absolute;inset:-3px;border-radius:999px;
+  background:var(--grad-brand);filter:blur(14px);opacity:.55;z-index:0;
+  animation:pulse-glow 2.6s ease-in-out infinite;
+}
+@keyframes pulse-glow{0%,100%{opacity:.4;transform:scale(1)}50%{opacity:.7;transform:scale(1.08)}}
+.btn-ghost{background:transparent;color:var(--text);border:1.5px solid var(--border)}
+.btn-ghost:hover{border-color:var(--mint);color:var(--mint)}
+.btn-sm{padding:10px 20px;font-size:13.5px}
+.btn:active{transform:scale(.96)}
+
+.eyebrow{
+  display:inline-flex;align-items:center;gap:8px;font-family:var(--font-b);font-weight:600;
+  font-size:12.5px;letter-spacing:.3px;color:var(--mint);background:rgba(35,234,176,.1);
+  border:1px solid rgba(35,234,176,.25);padding:7px 16px;border-radius:999px;margin-bottom:16px;
+}
+.eyebrow i{width:6px;height:6px;border-radius:50%;background:var(--mint);box-shadow:0 0 8px var(--mint);animation:blink 1.6s infinite}
+@keyframes blink{50%{opacity:.3}}
+
+h2.section-title{
+  font-family:var(--font-d);font-weight:800;font-size:clamp(26px,4.2vw,42px);
+  line-height:1.35;color:var(--text);
+}
+.grad-text{background:var(--grad-brand);-webkit-background-clip:text;background-clip:text;color:transparent}
+.section-sub{color:var(--muted);font-size:clamp(14px,1.8vw,16.5px);max-width:560px}
+
+section{position:relative;z-index:1}
+
+/* ===== topbar ===== */
+#topbar{
+  position:fixed;top:14px;right:14px;left:14px;z-index:200;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 18px;border-radius:999px;
+  background:rgba(9,13,28,.6);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border:1px solid var(--border-soft);
+  transform:translateY(-140%);transition:transform .5s var(--ease);
+  max-width:calc(var(--maxw) + 28px);margin:0 auto;
+}
+#topbar.show{transform:translateY(0)}
+.brand-mini{display:flex;align-items:center;gap:10px;font-family:var(--font-d);font-weight:700;font-size:15px}
+.brand-mini .mark{width:30px;height:30px;border-radius:9px;background:var(--grad-brand);display:flex;align-items:center;justify-content:center}
+.brand-mini .mark svg{width:16px;height:16px;color:#04180f}
+
+/* ===== HERO ===== */
+#hero{min-height:100svh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:140px 20px 80px;position:relative}
+.hero-tag{font-family:var(--font-b);color:var(--muted);font-size:14px;margin-bottom:18px;max-width:420px}
+#hero h1{
+  font-family:var(--font-d);font-weight:900;font-size:clamp(34px,7.5vw,78px);line-height:1.15;
+  max-width:900px;
+}
+#hero h1 .line{display:block;overflow:hidden}
+#hero h1 .line span{display:inline-block;transform:translateY(110%);animation:lineup .9s var(--ease) forwards}
+@keyframes lineup{to{transform:translateY(0)}}
+#hero p.desc{color:var(--muted);font-size:clamp(15px,1.9vw,18px);max-width:480px;margin:24px auto 34px}
+.hero-cta{display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
+.hero-stats{display:flex;gap:34px;margin-top:60px;flex-wrap:wrap;justify-content:center}
+.hero-stat{text-align:center}
+.hero-stat b{display:block;font-family:var(--font-d);font-weight:800;font-size:clamp(22px,3vw,32px)}
+.hero-stat .cnt{background:var(--grad-brand);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero-stat small{color:var(--muted);font-size:12.5px}
+.scrolldown{
+  position:absolute;bottom:26px;left:50%;transform:translateX(-50%);
+  display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--muted);font-size:12px;
+}
+.scrolldown .wheel{width:22px;height:34px;border:1.5px solid var(--border);border-radius:12px;display:flex;justify-content:center;padding-top:6px}
+.scrolldown .wheel i{width:3px;height:7px;border-radius:2px;background:var(--mint);animation:wheel 1.6s infinite}
+@keyframes wheel{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(10px)}}
+
+/* floating chaos chips inside hero */
+.chip-field{position:absolute;inset:0;z-index:0;pointer-events:none}
+.chip{
+  position:absolute;font-family:var(--font-b);font-weight:500;font-size:13.5px;color:var(--text);
+  padding:10px 16px;border-radius:14px;background:rgba(255,255,255,.04);
+  border:1px solid var(--border-soft);backdrop-filter:blur(10px);
+  animation:chipfloat 9s ease-in-out infinite;white-space:nowrap;opacity:.85;
+}
+@keyframes chipfloat{0%,100%{transform:translateY(0) rotate(var(--r,0deg))}50%{transform:translateY(-14px) rotate(var(--r,0deg))}}
+
+/* ===== ORBIT (pinned assembly) ===== */
+#orbit-section{height:320vh;position:relative}
+.orbit-stage{
+  position:sticky;top:0;height:100svh;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;overflow:hidden;
+}
+.orbit-area{position:relative;width:min(92vw,640px);height:min(92vw,640px);--radius:min(38vw,240px)}
+.orbit-core{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) scale(calc(.5 + var(--pg,0)*.5));
+  width:96px;height:96px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%, #1c2b52, #060a18 72%);
+  border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 calc(20px + var(--pg,0)*60px) rgba(35,234,176, calc(.2 + var(--pg,0)*.5));
+  z-index:3;
+}
+.orbit-core svg{width:40px;height:40px;color:var(--mint);opacity:var(--pg,0)}
+.orbit-node{position:absolute;top:50%;left:50%;width:0;height:0}
+.orbit-line{
+  position:absolute;top:0;left:0;height:2px;transform-origin:right center;
+  background:linear-gradient(90deg, rgba(35,234,176,.85), rgba(35,234,176,0));
+  width:calc(var(--radius) * var(--pg, 0));
+  transform:translateY(-1px) rotate(var(--angle));
+  opacity:var(--pg,0);
+}
+.orbit-chip{
+  position:absolute;top:0;left:0;
+  transform:
+    translate(
+      calc(var(--cx) * var(--radius) + (1 - var(--pg,0)) * var(--sx)),
+      calc(var(--cy) * var(--radius) + (1 - var(--pg,0)) * var(--sy))
+    )
+    translate(-50%,-50%)
+    rotate(calc((1 - var(--pg,0)) * var(--srot)));
+  width:118px;padding:12px 10px;border-radius:16px;text-align:center;
+  background:rgba(255,255,255,.05);border:1px solid var(--border-soft);
+  backdrop-filter:blur(14px);
+  opacity:calc(.35 + var(--pg,0) * .65);
+}
+.orbit-chip .ic{width:26px;height:26px;margin:0 auto 6px;border-radius:8px;background:rgba(35,234,176,.14);display:flex;align-items:center;justify-content:center;color:var(--mint)}
+.orbit-chip .ic svg{width:14px;height:14px}
+.orbit-chip b{display:block;font-family:var(--font-d);font-size:11.5px;font-weight:700}
+.orbit-ghost{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  font-family:var(--font-b);font-size:10.5px;color:var(--muted);white-space:nowrap;
+  opacity:calc(1 - var(--pg,0) * 2);
+}
+.orbit-caption{position:relative;z-index:3;text-align:center;margin-top:26px;opacity:var(--pi,0);transform:translateY(calc((1-var(--pi,0)) * 16px))}
+.orbit-caption h3{font-family:var(--font-d);font-weight:800;font-size:clamp(20px,3vw,28px)}
+.orbit-caption p{color:var(--muted);font-size:14px;margin-top:8px;max-width:380px}
+
+@media (max-width:640px){
+  .orbit-chip{width:92px;padding:9px 6px}
+  .orbit-chip b{font-size:10px}
+}
+
+/* ===== WHO ===== */
+#who{padding:120px 0 60px;text-align:center}
+.badges{display:flex;justify-content:center;gap:14px;margin-top:30px;flex-wrap:wrap}
+.badge{
+  display:flex;align-items:center;gap:10px;padding:13px 22px;border-radius:16px;
+  font-family:var(--font-b);font-weight:600;font-size:13.5px;
+}
+.badge svg{width:17px;height:17px;color:var(--mint)}
+
+/* ===== FEATURES ===== */
+#features{padding:60px 0}
+.feature-big{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;padding:70px 0}
+.feature-big .frame{
+  aspect-ratio:9/12;border-radius:28px;position:relative;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;
+}
+.frame .frame-label{color:var(--muted);font-size:13px;text-align:center;padding:24px}
+.frame::before{content:'';position:absolute;top:16px;right:50%;transform:translateX(50%);width:44px;height:5px;border-radius:3px;background:var(--border)}
+.feature-text h3{font-family:var(--font-d);font-weight:800;font-size:clamp(22px,3vw,32px);margin-bottom:14px;line-height:1.4}
+.feature-text p{color:var(--muted);font-size:15.5px;max-width:440px}
+
+.feature-pair{display:grid;grid-template-columns:1.1fr .9fr;gap:22px;padding-bottom:70px}
+.pair-card{padding:38px 32px;position:relative;overflow:hidden}
+.pair-card .ic-round{
+  width:50px;height:50px;border-radius:14px;background:rgba(35,234,176,.12);
+  display:flex;align-items:center;justify-content:center;color:var(--mint);margin-bottom:22px;
+}
+.pair-card .ic-round svg{width:24px;height:24px}
+.pair-card h4{font-family:var(--font-d);font-weight:700;font-size:20px;margin-bottom:10px}
+.pair-card p{font-size:14.5px;color:var(--muted);max-width:340px}
+.pomodoro-ring{width:118px;height:118px;border-radius:50%;border:6px solid var(--border-soft);display:flex;align-items:center;justify-content:center;margin-top:26px;position:relative}
+.pomodoro-ring::before{content:'';position:absolute;inset:-6px;border-radius:50%;border:6px solid transparent;border-top-color:var(--mint);border-right-color:var(--cyan);animation:spin 6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.pomodoro-ring span{font-family:var(--font-d);font-weight:800;font-size:20px}
+
+@media (max-width:820px){
+  .feature-big{grid-template-columns:1fr;gap:30px}
+  .feature-big .frame{order:-1;max-width:280px;margin:0 auto}
+  .feature-pair{grid-template-columns:1fr}
+}
+
+/* ===== RELIGIOUS ===== */
+#religious{padding:100px 0;position:relative;overflow:hidden}
+#religious .ambient-local{position:absolute;inset:0;z-index:0}
+#religious .ambient-local i{position:absolute;border-radius:50%;filter:blur(100px);opacity:.28;animation:float-blob 20s ease-in-out infinite}
+#religious .ambient-local i:nth-child(1){width:400px;height:400px;background:var(--mint);top:-10%;left:-10%}
+#religious .ambient-local i:nth-child(2){width:340px;height:340px;background:var(--violet);bottom:-15%;right:0%;animation-delay:-8s}
+.rel-inner{position:relative;z-index:2;display:grid;grid-template-columns:1fr 1fr;gap:50px;align-items:center}
+.rel-text h3{font-family:var(--font-d);font-weight:800;font-size:clamp(24px,3.4vw,34px);margin-bottom:16px}
+.rel-text p{color:var(--muted);font-size:15.5px;max-width:440px;margin-bottom:16px}
+.rel-text .quote{font-family:var(--font-d);font-weight:700;font-size:17px;color:var(--mint)}
+.rel-list{display:flex;flex-direction:column;gap:12px}
+.rel-row{display:flex;align-items:center;gap:14px;padding:16px 18px}
+.rel-row .ic-round{width:40px;height:40px;border-radius:11px;background:rgba(35,234,176,.14);color:var(--mint);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.rel-row .ic-round svg{width:19px;height:19px}
+.rel-row b{font-family:var(--font-d);font-size:14.5px;display:block}
+.rel-row small{color:var(--muted);font-size:12.5px}
+@media (max-width:820px){.rel-inner{grid-template-columns:1fr}}
+
+/* ===== GAMIFY ===== */
+#gamify{padding:60px 0}
+.strip{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:20px}
+.strip-main{padding:36px}
+.strip-main h4{font-family:var(--font-d);font-weight:800;font-size:22px;margin:12px 0 10px}
+.strip-main p{color:var(--muted);font-size:14.5px;max-width:340px}
+.mini-card{padding:26px 20px;display:flex;flex-direction:column;justify-content:center;gap:8px;text-align:center}
+.mini-card .num{font-family:var(--font-d);font-weight:800;font-size:30px}
+.mini-card .lbl{font-size:13px;color:var(--muted)}
+@media (max-width:820px){.strip{grid-template-columns:1fr}}
+
+/* ===== PRIVACY ===== */
+#privacy{padding:20px 0 90px}
+.privacy-card{padding:52px 44px;display:flex;align-items:center;gap:40px}
+.privacy-ic{width:80px;height:80px;border-radius:20px;background:rgba(35,234,176,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--mint)}
+.privacy-ic svg{width:38px;height:38px}
+.privacy-text h4{font-family:var(--font-d);font-weight:800;font-size:clamp(19px,2.6vw,26px);margin-bottom:8px}
+.privacy-text p{color:var(--muted);font-size:14.5px;max-width:520px}
+@media (max-width:700px){.privacy-card{flex-direction:column;text-align:center;padding:40px 26px}}
+
+/* ===== FORUM ===== */
+#forum{padding:20px 0 90px}
+.forum-card{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center;padding:50px}
+.forum-mock{background:rgba(255,255,255,.03);border-radius:20px;padding:22px;border:1px solid var(--border-soft)}
+.forum-bubble{opacity:0;transform:translateY(10px);animation:bubblein .6s var(--ease) forwards;background:rgba(255,255,255,.05);border-radius:14px;padding:14px 16px;margin-bottom:10px;font-size:13.5px;border:1px solid var(--border-soft)}
+.forum-bubble:nth-child(2){animation-delay:.5s}
+.forum-bubble small{display:block;color:var(--muted);margin-top:6px;font-size:11.5px}
+@keyframes bubblein{to{opacity:1;transform:translateY(0)}}
+@media (max-width:820px){.forum-card{grid-template-columns:1fr;padding:32px 24px}}
+
+/* ===== FOUNDER ===== */
+#founder{padding:20px 0 100px;text-align:center}
+.founder-card{max-width:680px;margin:0 auto;padding:44px 30px}
+.founder-card .quote-mark{font-family:var(--font-d);font-size:44px;color:var(--mint);line-height:1}
+.founder-card p{font-size:clamp(16px,2.2vw,20px);margin:10px 0 16px;line-height:1.85}
+.founder-card .who{font-family:var(--font-d);font-weight:600;color:var(--muted);font-size:14px}
+
+/* ===== FINAL CTA ===== */
+#cta-final{padding:120px 0;text-align:center;position:relative;overflow:hidden}
+#cta-final .glow{position:absolute;top:-140px;right:50%;transform:translateX(50%);width:560px;height:560px;border-radius:50%;background:radial-gradient(circle,rgba(35,234,176,.22),transparent 70%);filter:blur(40px)}
+#cta-final .inner{position:relative;z-index:2}
+#cta-final h2{font-family:var(--font-d);font-weight:900;font-size:clamp(28px,5vw,48px);margin-bottom:16px}
+#cta-final p{color:var(--muted);max-width:440px;margin:0 auto 32px;font-size:15.5px}
+.cta-row{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.beta-note{margin-top:24px;display:inline-flex;align-items:center;gap:8px;padding:9px 18px;border-radius:999px;font-size:13px;color:var(--muted)}
+
+/* ===== SUPPORT ===== */
+#support{padding:20px 0 100px}
+.support-card{padding:50px 44px;position:relative;overflow:hidden}
+.support-card .glow2{position:absolute;left:-60px;bottom:-60px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(139,123,255,.25),transparent 70%);filter:blur(20px);pointer-events:none}
+.support-top{max-width:520px;position:relative;z-index:2}
+.support-top h3{font-family:var(--font-d);font-weight:800;font-size:clamp(21px,3vw,30px);margin-bottom:12px}
+.support-top p{color:var(--muted);font-size:14.5px}
+.support-methods{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:30px;position:relative;z-index:2}
+.pay-card{padding:22px 20px;display:flex;flex-direction:column;gap:10px}
+.pay-card .pay-head{display:flex;align-items:center;gap:10px}
+.pay-card .ic-round{width:38px;height:38px;border-radius:11px;background:rgba(35,234,176,.14);color:var(--mint);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.pay-card .ic-round svg{width:18px;height:18px}
+.pay-card b{font-family:var(--font-d);font-size:14.5px}
+.pay-card small{color:var(--muted);font-size:12px}
+.pay-number{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  background:rgba(255,255,255,.04);border:1px solid var(--border-soft);
+  border-radius:12px;padding:10px 14px;font-family:var(--font-d);font-weight:700;
+  font-size:16px;letter-spacing:.5px;direction:ltr;text-align:right;
+}
+.copy-btn{
+  background:transparent;border:1px solid var(--border);color:var(--muted);
+  border-radius:8px;padding:6px 10px;font-size:11.5px;font-family:var(--font-b);
+  cursor:pointer;transition:.2s;flex-shrink:0;display:flex;align-items:center;gap:5px;
+}
+.copy-btn svg{width:13px;height:13px}
+.copy-btn:hover{border-color:var(--mint);color:var(--mint)}
+.copy-btn.copied{border-color:var(--mint);color:var(--mint)}
+.support-note{
+  position:relative;z-index:2;margin-top:26px;display:flex;align-items:center;gap:10px;
+  color:var(--muted);font-size:13px;flex-wrap:wrap;
+}
+.support-note a{color:var(--mint);font-weight:600}
+@media (max-width:640px){.support-methods{grid-template-columns:1fr}.support-card{padding:36px 26px}}
+
+/* ===== FOOTER ===== */
+footer{padding:56px 0 26px;position:relative;z-index:1}
+.foot-top{display:flex;justify-content:space-between;align-items:flex-start;gap:30px;flex-wrap:wrap;padding-bottom:36px;border-bottom:1px solid var(--border-soft)}
+.foot-brand{display:flex;align-items:center;gap:12px}
+.foot-brand .mark{width:40px;height:40px;border-radius:12px;background:var(--grad-brand);display:flex;align-items:center;justify-content:center}
+.foot-brand .mark svg{width:20px;height:20px;color:#04180f}
+.foot-brand b{font-family:var(--font-d);font-size:18px}
+.foot-brand span{display:block;font-size:12.5px;color:var(--muted);margin-top:2px}
+.foot-links{display:flex;gap:26px;flex-wrap:wrap}
+.foot-links a{font-size:13.5px;color:var(--muted);display:flex;align-items:center;gap:7px;transition:color .2s}
+.foot-links a:hover{color:var(--mint)}
+.foot-links a svg{width:16px;height:16px}
+.foot-bottom{padding-top:22px;text-align:center;font-size:12.5px;color:var(--muted);opacity:.6}
+
+@media (hover:hover) and (pointer:fine){ body{cursor:none} a,button{cursor:none} }
+</style>
+</head>
+<body>
+
+<div id="loader">
+  <svg viewBox="0 0 24 24" class="icon lp"><path d="M4 20c8 0 15-5 16-16C10 5 4 11 4 20Z"/></svg>
+</div>
+
+<div class="cursor-glow" id="cursorGlow"></div>
+<canvas id="netCanvas"></canvas>
+<div class="ambient"><i></i><i></i><i></i></div>
+
+<div id="topbar">
+  <div class="brand-mini">
+    <span class="mark"><img src="assets/app-icon.png" alt="طالب علم" style="width:100%;height:100%;object-fit:cover;border-radius:9px"></span>
+    طالب علم
+  </div>
+  <a href="#cta-final" class="btn btn-mint btn-sm"><span>حمّل التطبيق</span></a>
+</div>
+
+<svg style="position:absolute;width:0;height:0" aria-hidden="true">
+  <defs>
+    <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M4 20c8 0 15-5 16-16C10 5 4 11 4 20Z"/><path d="M6 18c3-5 7-8 12-10"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5c2-1.2 5-1.2 7 0v14c-2-1.2-5-1.2-7 0V5Z"/><path d="M20 5c-2-1.2-5-1.2-7 0v14c2-1.2 5-1.2 7 0V5Z"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.4 4 5.3 4 8.5s-1.4 6.1-4 8.5c-2.6-2.4-4-5.3-4-8.5s1.4-6.1 4-8.5Z"/></symbol>
+    <symbol id="i-flask" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6.5L4.8 18a2 2 0 0 0 1.7 3h11a2 2 0 0 0 1.7-3L14 9.5V3"/><path d="M7.5 15h9"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3 5 14h6l-1 7 8-11h-6l1-7Z"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
+    <symbol id="i-timer" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9.5 2h5"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2.5M12 19v2.5M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2.5 12H5M19 12h2.5M4.2 19.8 6 18M18 6l1.8-1.8"/></symbol>
+    <symbol id="i-beads" viewBox="0 0 24 24"><circle cx="12" cy="4.5" r="1.6"/><circle cx="17" cy="7.5" r="1.6"/><circle cx="19" cy="13" r="1.6"/><circle cx="16" cy="18" r="1.6"/><circle cx="10" cy="19.5" r="1.6"/><circle cx="6" cy="15.5" r="1.6"/><circle cx="6" cy="9" r="1.6"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20.5S3.5 15.2 3.5 9.2A4.7 4.7 0 0 1 12 6.5a4.7 4.7 0 0 1 8.5 2.7c0 6-8.5 11.3-8.5 11.3Z"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></symbol>
+    <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M7 4h10v5a5 5 0 0 1-10 0V4Z"/><path d="M7 6H4.5A2.5 2.5 0 0 0 4 10.9c.6.9 1.7 1.3 2.7 1M17 6h2.5A2.5 2.5 0 0 1 20 10.9c-.6.9-1.7 1.3-2.7 1M12 14v3.5M8.5 20.5h7l-1-3h-5l-1 3Z"/></symbol>
+    <symbol id="i-whats" viewBox="0 0 24 24"><path d="M4 20l1.3-4A8 8 0 1 1 8.6 19L4 20Z"/><path d="M9 9.3c0 3 2.6 5.6 5.6 5.6.7 0 1-.6.7-1.2l-.6-1.1c-.2-.4-.7-.5-1.1-.3l-.6.3a4 4 0 0 1-2.6-2.6l.3-.6c.2-.4.1-.9-.3-1.1L9.3 7.7c-.6-.3-1.2 0-1.2.7 0 .3 0 .6.1.9Z"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M21 3 3 10.5l7 3 3 7L21 3Z"/><path d="M10.5 13.5 21 3"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3.5" y="5.5" width="17" height="13" rx="2.5"/><path d="m4 6.5 8 6 8-6"/></symbol>
+    <symbol id="i-cam" viewBox="0 0 24 24"><rect x="3.5" y="6.5" width="17" height="13" rx="3"/><circle cx="12" cy="13" r="3.3"/><path d="M8 6.5 9.3 4h5.4L16 6.5"/></symbol>
+    <symbol id="i-fb" viewBox="0 0 24 24"><path d="M14 21v-7h2.4l.4-3H14V9c0-.9.2-1.5 1.6-1.5H17V4.8c-.3 0-1.2-.1-2.3-.1-2.3 0-3.8 1.4-3.8 4V11H8.5v3H11v7h3Z"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="11.5" height="11.5" rx="2.5"/><path d="M15.5 8.5V6a2.5 2.5 0 0 0-2.5-2.5H6A2.5 2.5 0 0 0 3.5 6v7A2.5 2.5 0 0 0 6 15.5h2.5"/></symbol>
+    <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M3.5 7.5A2.5 2.5 0 0 1 6 5h11a1 1 0 0 1 1 1v2"/><rect x="3.5" y="7.5" width="17" height="12" rx="2.5"/><circle cx="16.5" cy="13.5" r="1.4"/></symbol>
+  </defs>
+</svg>
+
+<!-- ============ HERO ============ -->
+<section id="hero">
+  <div class="chip-field" id="chipField">
+    <span class="chip" style="--r:-5deg; top:14%; right:6%; animation-delay:.2s">امتحان بكرة… ولسه فاتح الكتاب</span>
+    <span class="chip" style="--r:4deg; top:24%; left:4%; animation-delay:.7s">50 يوم على الثانوية العامة</span>
+    <span class="chip" style="--r:-3deg; top:68%; right:9%; animation-delay:1.3s">فين الجدول اللي عملته؟</span>
+    <span class="chip" style="--r:5deg; top:75%; left:7%; animation-delay:1.9s">ذاكرت النهارده؟</span>
+  </div>
+
+  <p class="hero-tag">مش هتفضل تايه في المذاكرة</p>
+  <h1>
+    <span class="line"><span style="animation-delay:.05s">من الفوضى</span></span>
+    <span class="line"><span style="animation-delay:.18s">لخطة واحدة <em class="grad-text" style="font-style:normal">واضحة</em></span></span>
+  </h1>
+  <p class="desc">طالب علم بيرتب موادك، مواعيدك، ووقتك — مبني خصيصًا لطلاب الثانوية العامة والبكالوريا المصرية.</p>
+  <div class="hero-cta">
+    <a href="#cta-final" class="btn btn-mint"><span>حمّل التطبيق الآن</span></a>
+    <a href="#features" class="btn btn-ghost">شوف مميزاته</a>
+  </div>
+
+  <div class="hero-stats">
+    <div class="hero-stat"><b class="cnt" data-count="6">0</b><small>مواد منظمة تلقائيًا</small></div>
+    <div class="hero-stat"><b class="cnt" data-count="10">0</b><small>إنجاز تقدر تفتحه</small></div>
+    <div class="hero-stat"><b class="cnt" data-count="0" data-suffix="%">0%</b><small>بياناتك بره جهازك</small></div>
+  </div>
+
+  <div class="scrolldown"><span>استمر</span><span class="wheel"><i></i></span></div>
+</section>
+
+<!-- ============ ORBIT ASSEMBLY ============ -->
+<section id="orbit-section">
+  <div class="orbit-stage" id="orbitStage">
+    <div class="orbit-area">
+      <div class="orbit-core"><img src="assets/app-icon.png" alt="" style="width:56px;height:56px;object-fit:cover;border-radius:15px;opacity:var(--pg,0)"></div>
+
+      <!-- node 1: top -->
+      <div class="orbit-node" style="--cx:0; --cy:-1; --angle:-90deg">
+        <div class="orbit-line"></div>
+        <div class="orbit-chip" style="--sx:60px; --sy:-140px; --srot:-12deg">
+          <span class="orbit-ghost">امتحان الكيمياء الأسبوع الجاي</span>
+          <span class="ic"><svg viewBox="0 0 24 24" class="icon"><use href="#i-flask"/></svg></span>
+          <b>الكيمياء</b>
+        </div>
+      </div>
+      <!-- node 2: upper right -->
+      <div class="orbit-node" style="--cx:0.866; --cy:-0.5; --angle:-30deg">
+        <div class="orbit-line"></div>
+        <div class="orbit-chip" style="--sx:150px; --sy:-40px; --srot:10deg">
+          <span class="orbit-ghost">منهج الأحياء لسه هباب</span>
+          <span class="ic"><svg viewBox="0 0 24 24" class="icon"><use href="#i-leaf"/></svg></span>
+          <b>الأحياء</b>
+        </div>
+      </div>
+      <!-- node 3: lower right -->
+      <div class="orbit-node" style="--cx:0.866; --cy:0.5; --angle:30deg">
+        <div class="orbit-line"></div>
+        <div class="orbit-chip" style="--sx:130px; --sy:110px; --srot:-8deg">
+          <span class="orbit-ghost">الفيزياء قافلها أسبوعين</span>
+          <span class="ic"><svg viewBox="0 0 24 24" class="icon"><use href="#i-bolt"/></svg></span>
+          <b>الفيزياء</b>
+        </div>
+      </div>
+      <!-- node 4: bottom -->
+      <div class="orbit-node" style="--cx:0; --cy:1; --angle:90deg">
+        <div class="orbit-line"></div>
+        <div class="orbit-chip" style="--sx:-50px; --sy:150px; --srot:9deg">
+          <span class="orbit-ghost">مفيش وقت يكفي اليومين دول</span>
+          <span class="ic"><svg viewBox="0 0 24 24" class="icon"><use href="#i-calendar"/></svg></span>
+          <b>جدول مذاكرة</b>
+        </div>
+      </div>
+      <!-- node 5: lower left -->
+      <div class="orbit-node" style="--cx:-0.866; --cy:0.5; --angle:150deg">
+        <div class="orbit-line"></div>
+        <div class="orbit-chip" style="--sx:-140px; --sy:90px; --srot:-10deg">
+          <span class="orbit-ghost">فوكابيولري الإنجليزي طار</span>
+          <span class="ic"><svg viewBox="0 0 24 24" class="icon"><use href="#i-globe"/></svg></span>
+          <b>الإنجليزية</b>
+        </div>
+      </div>
+      <!-- node 6: upper left -->
+      <div class="orbit-node" style="--cx:-0.866; --cy:-0.5; --angle:210deg">
+        <div class="orbit-line"></div>
+        <div class="orbit-chip" style="--sx:-160px; --sy:-60px; --srot:8deg">
+          <span class="orbit-ghost">مقال العربي ماكتبتوش</span>
+          <span class="ic"><svg viewBox="0 0 24 24" class="icon"><use href="#i-book"/></svg></span>
+          <b>اللغة العربية</b>
+        </div>
+      </div>
+    </div>
+
+    <div class="orbit-caption">
+      <h3>طالب <span class="grad-text">علم</span></h3>
+      <p>كل فكرة قلقانة منها بتتحول لمادة منظمة قدامك، بنظامها وشعبتها.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ WHO ============ -->
+<section id="who">
+  <div class="wrap" data-reveal>
+    <p class="eyebrow"><i></i>مش تطبيق عام</p>
+    <h2 class="section-title" style="max-width:720px;margin:0 auto 14px">طالب علم اتبنى بس عشان طلاب الثانوية العامة والبكالوريا المصرية</h2>
+    <p class="section-sub" style="margin:0 auto">اختار نظامك، صفك، وشعبتك أو مسارك — والتطبيق يترتب على مقاسك من أول ثانية.</p>
+    <div class="badges">
+      <span class="badge glass"><svg viewBox="0 0 24 24" class="icon"><use href="#i-book"/></svg> الثانوية العامة — علمي وأدبي</span>
+      <span class="badge glass"><svg viewBox="0 0 24 24" class="icon"><use href="#i-globe"/></svg> البكالوريا المصرية — بمساراتها الأربعة</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FEATURES ============ -->
+<section id="features">
+  <div class="wrap">
+
+    <div class="feature-big">
+      <div class="feature-text" data-reveal>
+        <span class="eyebrow"><i></i>كل مادة في مكانها</span>
+        <h3>منهجك كله قدامك، مادة مادة</h3>
+        <p>كل مادة عندها دروسها، ملخصاتها، واجباتها، امتحاناتها، وملفاتها. تضيف درس جديد في ثانية، وتتابع نسبة إنجازك في كل مادة أول بأول.</p>
+      </div>
+      <div class="frame glass tilt" data-reveal="scale"><div class="frame-label">لقطة شاشة المواد<br>(هتتحط هنا)</div></div>
+    </div>
+
+    <div class="feature-pair">
+      <div class="pair-card glass tilt" data-reveal>
+        <div class="ic-round"><svg viewBox="0 0 24 24" class="icon"><use href="#i-timer"/></svg></div>
+        <h4>مؤقت مذاكرة يفرض عليك الانضباط</h4>
+        <p>جلسات مذاكرة مقسمة بنظام بومودورو، وتقدر تتابع كل جلسة خلصت كام دقيقة من يومك.</p>
+        <div class="pomodoro-ring"><span>25:00</span></div>
+      </div>
+      <div class="pair-card glass tilt" data-reveal>
+        <div class="ic-round"><svg viewBox="0 0 24 24" class="icon"><use href="#i-calendar"/></svg></div>
+        <h4>جدول مذاكرة بالتقويم</h4>
+        <p>حدد مواعيد المذاكرة والمواعيد المهمة على تقويم شهري، والتطبيق يفكرك في وقتها بالظبط.</p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============ RELIGIOUS ============ -->
+<section id="religious">
+  <div class="ambient-local"><i></i><i></i></div>
+  <div class="wrap rel-inner">
+    <div class="rel-text" data-reveal>
+      <span class="eyebrow"><i></i>مذاكرتك مش بس مادة</span>
+      <h3>الركن الديني</h3>
+      <p>أذكار الصباح والمساء، أدعية للمذاكرة والامتحانات، سبحة إلكترونية، وتذكير إنك تدعي قبل ما تدخل أي امتحان — كل ده جوه نفس التطبيق اللي بتذاكر بيه.</p>
+      <p class="quote">"لأن التوفيق مش بس مذاكرة."</p>
+    </div>
+    <div class="rel-list" data-reveal>
+      <div class="rel-row glass">
+        <span class="ic-round"><svg viewBox="0 0 24 24" class="icon"><use href="#i-sun"/></svg></span>
+        <div><b>أذكار الصباح والمساء</b><small>تذكير يومي في وقته</small></div>
+      </div>
+      <div class="rel-row glass">
+        <span class="ic-round"><svg viewBox="0 0 24 24" class="icon"><use href="#i-book"/></svg></span>
+        <div><b>أدعية للمذاكرة والامتحانات</b><small>قبل ما تدخل أي اختبار</small></div>
+      </div>
+      <div class="rel-row glass">
+        <span class="ic-round"><svg viewBox="0 0 24 24" class="icon"><use href="#i-beads"/></svg></span>
+        <div><b>سبحة إلكترونية</b><small>عداد تسبيح رقمي</small></div>
+      </div>
+      <div class="rel-row glass">
+        <span class="ic-round"><svg viewBox="0 0 24 24" class="icon"><use href="#i-heart"/></svg></span>
+        <div><b>صدقة جارية</b><small>التطبيق نفسه صدقة — ادعِ لصاحبها</small></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ GAMIFY ============ -->
+<section id="gamify">
+  <div class="wrap">
+    <div class="strip">
+      <div class="strip-main glass tilt" data-reveal>
+        <span class="eyebrow"><i></i>ذاكر بانتظام، شوف نفسك بتترقّى</span>
+        <h4>إنجازات ولوحة ترتيب</h4>
+        <p>افتح إنجازات مع كل ساعة مذاكرة ومهمة بتخلصها، وقارن انتظامك بزمايلك في لوحة الترتيب.</p>
+      </div>
+      <div class="mini-card glass tilt" data-reveal>
+        <span class="num"><span class="cnt" data-count="10">0</span>+</span>
+        <span class="lbl">إنجاز تقدر تفتحه</span>
+      </div>
+      <div class="mini-card glass tilt" data-reveal>
+        <span class="num">🔥</span>
+        <span class="lbl">تتبع أيامك المتتالية</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PRIVACY ============ -->
+<section id="privacy">
+  <div class="wrap">
+    <div class="privacy-card glass tilt" data-reveal>
+      <div class="privacy-ic"><svg viewBox="0 0 24 24" class="icon"><use href="#i-lock"/></svg></div>
+      <div class="privacy-text">
+        <h4>كل حاجة على جهازك بس</h4>
+        <p>مفيش سيرفر بيخزن مذاكرتك أو بياناتك الشخصية. كل حاجة محفوظة على موبايلك، وتقدر تاخد نسخة احتياطية وقت ما تحب وتسترجعها على أي جهاز.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FORUM ============ -->
+<section id="forum">
+  <div class="wrap">
+    <div class="forum-card glass tilt" data-reveal>
+      <div class="feature-text">
+        <span class="eyebrow"><i></i>مش لوحدك</span>
+        <h3>منتدى لطلاب صفك بالظبط</h3>
+        <p>اسأل واتناقش مع طلاب في نفس صفك وشعبتك أو مسارك — مش مع العالم كله.</p>
+      </div>
+      <div class="forum-mock">
+        <div class="forum-bubble">"حد فاهم الدرس التالت في الأحياء؟ مش قادر أستوعب التنفس الخلوي"<small>الصف الثالث الثانوي • علمي علوم</small></div>
+        <div class="forum-bubble">"جدول مراجعة الكيمياء قبل الامتحان حد عنده نصيحة؟"<small>الصف الثالث الثانوي • علمي علوم</small></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FOUNDER ============ -->
+<section id="founder">
+  <div class="wrap founder-card glass" data-reveal="scale">
+    <span class="quote-mark">"</span>
+    <p>أنا معاذ، صممت طالب علم وأنا لسه طالب زيك. عارف قد إيه صعب إنك تنظم وقتك في السنين دي — عشان كده بنيت التطبيق ده، ولسه بطوّره باستمرار.</p>
+    <span class="who">صانع التطبيق</span>
+  </div>
+</section>
+
+<!-- ============ SUPPORT ============ -->
+<section id="support">
+  <div class="wrap">
+    <div class="support-card glass" data-reveal>
+      <div class="glow2"></div>
+      <div class="support-top">
+        <span class="eyebrow"><i></i>ساعدنا نكمل الطريق</span>
+        <h3>ادعم نشر طالب علم على Google Play</h3>
+        <p>نشر التطبيق على المتجر له رسوم اشتراك ومصاريف تطوير مستمرة. أي مبلغ بسيط بيقرّبنا خطوة، وبعد ما تدعم كلّمني على تليجرام وأنا هبعتلك تأكيد ومتابعة.</p>
+      </div>
+
+      <div class="support-methods">
+        <div class="pay-card glass">
+          <div class="pay-head">
+            <span class="ic-round"><svg viewBox="0 0 24 24" class="icon"><use href="#i-wallet"/></svg></span>
+            <div><b>فودافون كاش</b><br><small>تحويل مباشر على الرقم</small></div>
+          </div>
+          <div class="pay-number">
+            <span dir="ltr">01065631855</span>
+            <button class="copy-btn" data-copy="01065631855" type="button">
+              <svg viewBox="0 0 24 24" class="icon"><use href="#i-copy"/></svg> نسخ
+            </button>
+          </div>
+        </div>
+        <div class="pay-card glass">
+          <div class="pay-head">
+            <span class="ic-round"><svg viewBox="0 0 24 24" class="icon"><use href="#i-send"/></svg></span>
+            <div><b>تواصل شخصي</b><br><small>لتأكيد الدعم أو أي استفسار</small></div>
+          </div>
+          <a href="https://t.me/+201065631855" target="_blank" rel="noopener" class="btn btn-ghost btn-sm" style="justify-content:center">تواصل على تليجرام</a>
+        </div>
+      </div>
+
+      <p class="support-note">
+        <svg viewBox="0 0 24 24" class="icon" style="width:14px;height:14px"><use href="#i-bolt"/></svg>
+        لسه مفيش InstaPay متاح حاليًا — <a href="https://t.me/+201065631855" target="_blank" rel="noopener">كلمني على تليجرام</a> لو محتاج وسيلة تانية.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FINAL CTA ============ -->
+<section id="cta-final">
+  <div class="glow"></div>
+  <div class="wrap inner" data-reveal>
+    <h2>جاهز ترتب مذاكرتك؟</h2>
+    <p>حمّل طالب علم دلوقتي وابدأ خطوتك الأولى نحو مذاكرة منظمة.</p>
+    <div class="cta-row">
+      <!-- ضع رابط تحميل ملف الـ APK هنا -->
+      <a href="#" id="download-btn" class="btn btn-mint"><span>حمّل النسخة التجريبية (APK)</span></a>
+    </div>
+    <div class="beta-note glass">
+      <svg viewBox="0 0 24 24" class="icon" style="width:15px;height:15px"><use href="#i-bolt"/></svg>
+      التطبيق في مرحلة الاختبار — قريبًا على Google Play
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-top">
+      <div class="foot-brand">
+        <span class="mark"><img src="assets/app-icon.png" alt="طالب علم" style="width:100%;height:100%;object-fit:cover;border-radius:12px"></span>
+        <div><b>طالب علم</b><span>رفيقك في رحلة الثانوية العامة والبكالوريا</span></div>
+      </div>
+      <div class="foot-links">
+        <a href="https://wa.me/201550036259" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" class="icon"><use href="#i-whats"/></svg> واتساب</a>
+        <a href="https://t.me/Tanawy_3_offical" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" class="icon"><use href="#i-send"/></svg> قناة تليجرام</a>
+        <a href="https://t.me/monaksha_3" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" class="icon"><use href="#i-send"/></svg> جروب المناقشة</a>
+        <!-- ضع رابط إنستجرام هنا -->
+        <a href="#"><svg viewBox="0 0 24 24" class="icon"><use href="#i-cam"/></svg> إنستجرام</a>
+        <!-- ضع رابط فيسبوك هنا -->
+        <a href="#"><svg viewBox="0 0 24 24" class="icon"><use href="#i-fb"/></svg> فيسبوك</a>
+        <a href="mailto:moaz2009amen@gmail.com"><svg viewBox="0 0 24 24" class="icon"><use href="#i-mail"/></svg> إيميل</a>
+      </div>
+    </div>
+    <div class="foot-bottom">© 2026 طالب علم — صُنع بحب لطلاب مصر</div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var fine = window.matchMedia('(hover:hover) and (pointer:fine)').matches;
+
+  /* loader */
+  window.addEventListener('load', function(){
+    setTimeout(function(){ document.getElementById('loader').classList.add('hide'); }, 500);
+  });
+
+  /* cursor glow */
+  if(fine && !reduced){
+    var glow = document.getElementById('cursorGlow');
+    var gx=0, gy=0, tx=0, ty=0;
+    glow.classList.add('on');
+    window.addEventListener('mousemove', function(e){ tx=e.clientX; ty=e.clientY; });
+    function loopGlow(){
+      gx += (tx-gx)*0.18; gy += (ty-gy)*0.18;
+      glow.style.transform = 'translate('+gx+'px,'+gy+'px) translate(-50%,-50%)';
+      requestAnimationFrame(loopGlow);
+    }
+    loopGlow();
+  }
+
+  /* topbar + scroll-linked orbit progress */
+  var topbar = document.getElementById('topbar');
+  var orbitSection = document.getElementById('orbit-section');
+  var orbitStage = document.getElementById('orbitStage');
+
+  function onScroll(){
+    if(window.scrollY > window.innerHeight*0.7){ topbar.classList.add('show'); }
+    else{ topbar.classList.remove('show'); }
+
+    var rect = orbitSection.getBoundingClientRect();
+    var total = rect.height - window.innerHeight;
+    var raw = total>0 ? (-rect.top)/total : 0;
+    var p = Math.min(1, Math.max(0, raw));
+    var pg = Math.min(1, Math.max(0, p/0.6));
+    var pi = Math.min(1, Math.max(0, (p-0.6)/0.4));
+    orbitStage.style.setProperty('--pg', reduced?1:pg.toFixed(3));
+    orbitStage.style.setProperty('--pi', reduced?1:pi.toFixed(3));
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+
+  /* reveal on scroll */
+  var revealEls = document.querySelectorAll('[data-reveal]');
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(en){
+      if(en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target); }
+    });
+  }, {threshold:.2});
+  revealEls.forEach(function(el){ io.observe(el); });
+
+  /* counters */
+  var counters = document.querySelectorAll('.cnt');
+  var cio = new IntersectionObserver(function(entries){
+    entries.forEach(function(en){
+      if(!en.isIntersecting) return;
+      var el = en.target;
+      var target = parseFloat(el.dataset.count);
+      var suffix = el.dataset.suffix || '';
+      var start = null; var dur = 1200;
+      function step(ts){
+        if(!start) start = ts;
+        var prog = Math.min(1, (ts-start)/dur);
+        var eased = 1 - Math.pow(1-prog, 3);
+        el.textContent = Math.round(target*eased) + suffix;
+        if(prog<1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+      cio.unobserve(el);
+    });
+  }, {threshold:.5});
+  counters.forEach(function(el){ cio.observe(el); });
+
+  /* magnetic buttons */
+  if(fine && !reduced){
+    document.querySelectorAll('.btn').forEach(function(btn){
+      btn.addEventListener('mousemove', function(e){
+        var r = btn.getBoundingClientRect();
+        var mx = e.clientX - r.left - r.width/2;
+        var my = e.clientY - r.top - r.height/2;
+        btn.style.transform = 'translate('+(mx*0.25)+'px,'+(my*0.4)+'px)';
+      });
+      btn.addEventListener('mouseleave', function(){ btn.style.transform=''; });
+    });
+  }
+
+  /* 3D tilt */
+  if(fine && !reduced){
+    document.querySelectorAll('.tilt').forEach(function(card){
+      card.addEventListener('mousemove', function(e){
+        var r = card.getBoundingClientRect();
+        var px = (e.clientX - r.left)/r.width - 0.5;
+        var py = (e.clientY - r.top)/r.height - 0.5;
+        card.style.transform = 'perspective(800px) rotateY('+(px*8)+'deg) rotateX('+(py*-8)+'deg) translateZ(6px)';
+      });
+      card.addEventListener('mouseleave', function(){ card.style.transform=''; });
+    });
+  }
+
+  /* copy to clipboard */
+  document.querySelectorAll('.copy-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var val = btn.dataset.copy;
+      var done = function(){
+        var original = btn.innerHTML;
+        btn.classList.add('copied');
+        btn.innerHTML = 'تم النسخ ✓';
+        setTimeout(function(){ btn.innerHTML = original; btn.classList.remove('copied'); }, 1800);
+      };
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(val).then(done).catch(function(){
+          var ta=document.createElement('textarea'); ta.value=val; document.body.appendChild(ta);
+          ta.select(); document.execCommand('copy'); document.body.removeChild(ta); done();
+        });
+      } else {
+        var ta=document.createElement('textarea'); ta.value=val; document.body.appendChild(ta);
+        ta.select(); document.execCommand('copy'); document.body.removeChild(ta); done();
+      }
+    });
+  });
+
+  /* visitor counter — silent, free, no signup, not shown to users.
+     to check the count yourself, open this URL in your browser: */
+  fetch('https://countapi.mileshilliard.com/api/v1/hit/talib-ilm-moaz/visits').catch(function(){});
+
+  /* particle network canvas */
+  var canvas = document.getElementById('netCanvas');
+  var ctx = canvas.getContext('2d');
+  var W,H,particles;
+  function resize(){
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = document.body.scrollHeight;
+  }
+  function makeParticles(){
+    var count = Math.min(90, Math.floor(window.innerWidth/16));
+    particles = [];
+    for(var i=0;i<count;i++){
+      particles.push({
+        x: Math.random()*W, y: Math.random()*H,
+        vx: (Math.random()-0.5)*0.25, vy:(Math.random()-0.5)*0.25,
+        r: Math.random()*1.6+0.6
+      });
+    }
+  }
+  resize(); makeParticles();
+  window.addEventListener('resize', function(){ resize(); makeParticles(); });
+
+  function drawNet(){
+    ctx.clearRect(0,0,W,H);
+    var viewTop = window.scrollY - 200;
+    var viewBottom = window.scrollY + window.innerHeight + 200;
+    for(var i=0;i<particles.length;i++){
+      var p = particles[i];
+      p.x += p.vx; p.y += p.vy;
+      if(p.x<0||p.x>W) p.vx*=-1;
+      if(p.y<0||p.y>H) p.vy*=-1;
+      if(p.y<viewTop || p.y>viewBottom) continue;
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle = 'rgba(35,234,176,0.55)';
+      ctx.fill();
+      for(var j=i+1;j<particles.length;j++){
+        var q = particles[j];
+        if(q.y<viewTop || q.y>viewBottom) continue;
+        var dx=p.x-q.x, dy=p.y-q.y, d=Math.sqrt(dx*dx+dy*dy);
+        if(d<120){
+          ctx.beginPath();
+          ctx.moveTo(p.x,p.y); ctx.lineTo(q.x,q.y);
+          ctx.strokeStyle = 'rgba(55,216,255,'+(0.14*(1-d/120))+')';
+          ctx.lineWidth=1;
+          ctx.stroke();
+        }
+      }
+    }
+    if(!reduced) requestAnimationFrame(drawNet);
+  }
+  drawNet();
+  window.addEventListener('load', resize);
+})();
+</script>
+</body>
+</html>
