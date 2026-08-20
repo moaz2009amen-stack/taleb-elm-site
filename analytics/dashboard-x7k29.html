@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>إحصائيات طالب علم</title>
+<style>
+  :root{
+    --navy:#13263e; --ink:#182338; --ink-soft:#5c6b82; --line:#e6eaf1;
+    --paper:#f6f8fb; --surface:#ffffff; --mint:#1fbf7a; --mint-dark:#149c62;
+    --mint-pale:#e6f9f1; --coral:#ff6b57; --coral-pale:#ffece9;
+    --shadow:0 10px 30px -12px rgba(19,38,62,.15);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:-apple-system,"Segoe UI",Tahoma,Arial,sans-serif;padding:20px}
+  .wrap{max-width:760px;margin:0 auto}
+  h1{font-size:20px;margin:8px 0 22px}
+  .gate{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:26px;box-shadow:var(--shadow);max-width:380px;margin:60px auto}
+  .gate input{width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--line);font-size:15px;margin-bottom:12px;font-family:inherit}
+  .gate button{width:100%;padding:12px;border-radius:12px;border:0;background:var(--mint);color:#fff;font-weight:700;font-size:15px;cursor:pointer}
+  .gate button:hover{background:var(--mint-dark)}
+  .err{color:var(--coral);font-size:13px;margin-top:10px;display:none}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:22px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px}
+  .card b{display:block;font-size:26px;color:var(--navy)}
+  .card span{font-size:12.5px;color:var(--ink-soft)}
+  .card small{display:block;font-size:11px;color:var(--ink-soft);margin-top:2px}
+  .card.warn b{color:var(--coral)}
+  table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;font-size:13px}
+  th,td{padding:9px 10px;text-align:center;border-bottom:1px solid var(--line)}
+  th{background:var(--paper);color:var(--ink-soft);font-weight:700}
+  tr:last-child td{border-bottom:0}
+  .section-title{font-size:14px;font-weight:700;color:var(--navy);margin:26px 0 10px}
+  .refresh{font-size:12.5px;color:var(--ink-soft);text-decoration:underline;cursor:pointer;background:none;border:0;padding:0;margin-bottom:16px}
+  #dash{display:none}
+  .loading{text-align:center;color:var(--ink-soft);padding:40px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="gate" class="gate">
+    <h1 style="margin-top:0">دخول الإحصائيات</h1>
+    <input type="password" id="pw" placeholder="الباسورد">
+    <button id="pwBtn">دخول</button>
+    <div class="err" id="err">باسورد غلط، جرّب تاني</div>
+  </div>
+
+  <div id="dash">
+    <h1>📊 إحصائيات طالب علم</h1>
+    <button class="refresh" id="refreshBtn">↻ تحديث الأرقام</button>
+    <div id="loading" class="loading">بيجيب البيانات...</div>
+    <div id="content" style="display:none">
+      <div class="cards">
+        <div class="card"><b id="c-visitors">–</b><span>زوّار فريدين</span><small id="c-views">– زيارة إجمالي</small></div>
+        <div class="card"><b id="c-reached">–</b><span>وصلوا لمرحلة التحميل</span><small id="c-reached-t">– مرة إجمالي</small></div>
+        <div class="card"><b id="c-downloaded">–</b><span>حمّلوا فعلاً</span><small id="c-downloaded-t">– مرة إجمالي</small></div>
+        <div class="card warn"><b id="c-abandoned">–</b><span>وصلوا وماحمّلوش</span></div>
+        <div class="card"><b id="c-wa">–</b><span>تابعوا قناة الواتساب</span><small id="c-wa-t">– مرة إجمالي</small></div>
+      </div>
+      <div class="section-title">آخر 14 يوم</div>
+      <table>
+        <thead><tr><th>اليوم</th><th>زيارات</th><th>وصلوا للتحميل</th><th>حمّلوا</th><th>تابعوا واتساب</th></tr></thead>
+        <tbody id="dailyBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+/* حط نفس بيانات Supabase اللي حطيتها في index.html */
+const SUPABASE_URL = "https://nokgvbmngcgkfjlcmvmd.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_r96Xijbc6491_olkX2Gaqw_49BAVA48";
+
+var currentPassword = null;
+
+async function callRpc(fn, password){
+  var res = await fetch(SUPABASE_URL + '/rest/v1/rpc/' + fn, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
+    },
+    body: JSON.stringify({ p_password: password })
+  });
+  if(!res.ok) throw new Error('unauthorized');
+  return res.json();
+}
+
+function fmt(n){ return (n||0).toLocaleString('ar-EG'); }
+
+async function loadStats(password){
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('content').style.display = 'none';
+  try{
+    var stats = (await callRpc('get_site_stats', password))[0];
+    var daily = await callRpc('get_site_stats_daily', password);
+
+    document.getElementById('c-visitors').textContent = fmt(stats.unique_visitors);
+    document.getElementById('c-views').textContent = fmt(stats.total_page_views) + ' زيارة إجمالي';
+    document.getElementById('c-reached').textContent = fmt(stats.unique_reached_download);
+    document.getElementById('c-reached-t').textContent = fmt(stats.total_reached_download) + ' مرة إجمالي';
+    document.getElementById('c-downloaded').textContent = fmt(stats.unique_downloaded);
+    document.getElementById('c-downloaded-t').textContent = fmt(stats.total_downloaded) + ' مرة إجمالي';
+    document.getElementById('c-abandoned').textContent = fmt(stats.reached_but_not_downloaded);
+    document.getElementById('c-wa').textContent = fmt(stats.unique_whatsapp_followed);
+    document.getElementById('c-wa-t').textContent = fmt(stats.total_whatsapp_followed) + ' مرة إجمالي';
+
+    var body = document.getElementById('dailyBody');
+    body.innerHTML = '';
+    daily.forEach(function(row){
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td>' + row.day + '</td><td>' + fmt(row.page_views) + '</td><td>' + fmt(row.reached_download) + '</td><td>' + fmt(row.downloaded) + '</td><td>' + fmt(row.whatsapp_followed) + '</td>';
+      body.appendChild(tr);
+    });
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('content').style.display = 'block';
+  }catch(e){
+    document.getElementById('loading').textContent = 'حصل خطأ في جلب البيانات. تأكد إنك شغّلت ملف الـ SQL في Supabase.';
+  }
+}
+
+document.getElementById('pwBtn').addEventListener('click', async function(){
+  var pw = document.getElementById('pw').value;
+  if(!pw) return;
+  document.getElementById('err').style.display = 'none';
+  try{
+    await callRpc('get_site_stats', pw); /* just to validate password */
+    currentPassword = pw;
+    document.getElementById('gate').style.display = 'none';
+    document.getElementById('dash').style.display = 'block';
+    loadStats(pw);
+  }catch(e){
+    document.getElementById('err').style.display = 'block';
+  }
+});
+document.getElementById('pw').addEventListener('keydown', function(e){
+  if(e.key === 'Enter') document.getElementById('pwBtn').click();
+});
+document.getElementById('refreshBtn').addEventListener('click', function(){
+  if(currentPassword) loadStats(currentPassword);
+});
+</script>
+</body>
+</html>

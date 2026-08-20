@@ -834,11 +834,67 @@ footer{padding:56px 0 26px}
    حط لينك تحميل ملف الـ APK هنا (من GitHub Releases مثلًا) — مكان واحد بس
    وكل زراير التحميل في الموقع (فوق، النص، وقسم الـ CTA) هتستخدمه تلقائي.
    ===================================================================== */
-const APK_URL = "https://github.com/moaz2009amen-stack/taleb-elm-site/releases/download/v1.0/taleb-elm-v1.0.0.apk";
+const APK_URL = "ضع_رابط_تحميل_الـ_APK_هنا";
 const WA_CHANNEL_URL = "https://whatsapp.com/channel/0029VbDeexfIyPtIvmXFRG2r";
+
+/* =====================================================================
+   إعدادات تتبّع الزيارات (Supabase) — حط بياناتك من:
+   Supabase Dashboard → Settings → API
+   لو سبتهم زي ما هما، التتبع هيتعطّل تلقائي من غير ما يبوّظ الموقع.
+   ===================================================================== */
+const SUPABASE_URL = "ضع_SUPABASE_URL_هنا";
+const SUPABASE_ANON_KEY = "ضع_SUPABASE_ANON_KEY_هنا";
+
+/* =====================================================================
+   تتبّع بسيط وخاص: بيسجّل زيارة الصفحة، ووصول المستخدم لمرحلة التحميل،
+   والتحميل الفعلي، ومتابعة قناة الواتساب. مفيش أي بيانات شخصية بتتسجل —
+   بس معرّف عشوائي مخزّن في المتصفح عشان نعرف نفرّق زائر عن التاني.
+   ===================================================================== */
+var Analytics = (function(){
+  var configured = SUPABASE_URL.indexOf('ضع_') !== 0 && SUPABASE_ANON_KEY.indexOf('ضع_') !== 0;
+
+  function getVisitorId(){
+    try{
+      var id = localStorage.getItem('ti_vid');
+      if(!id){
+        id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : ('v-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+        localStorage.setItem('ti_vid', id);
+      }
+      return id;
+    }catch(e){ return 'anon-' + Math.random().toString(36).slice(2); }
+  }
+
+  function track(eventType){
+    if(!configured) return;
+    try{
+      fetch(SUPABASE_URL + '/rest/v1/site_events', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+          'Prefer': 'return=minimal'
+        },
+        keepalive: true,
+        body: JSON.stringify({
+          visitor_id: getVisitorId(),
+          event_type: eventType,
+          page: location.pathname,
+          referrer: document.referrer || null,
+          user_agent: navigator.userAgent
+        })
+      }).catch(function(){});
+    }catch(e){}
+  }
+
+  return { track: track };
+})();
 
 (function(){
   var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* تسجيل زيارة الصفحة */
+  Analytics.track('page_view');
 
   /* reveal on scroll */
   var revealEls = document.querySelectorAll('[data-reveal]');
@@ -890,14 +946,21 @@ const WA_CHANNEL_URL = "https://whatsapp.com/channel/0029VbDeexfIyPtIvmXFRG2r";
   document.querySelectorAll('[data-download]').forEach(function(btn){
     btn.addEventListener('click', function(e){
       e.preventDefault();
+      Analytics.track('reached_download'); /* وصل لمرحلة التحميل */
       openModal(modal);
     });
   });
   goBtn.addEventListener('click', function(){
+    Analytics.track('download_clicked'); /* حمّل فعلاً */
     /* بعد ما التحميل يبدأ، نقفل مودال التحذير ونفتح دعوة متابعة قناة الواتساب */
     closeModal(modal);
     setTimeout(function(){ openModal(waModal); }, 600);
   });
+  if(waLink){
+    waLink.addEventListener('click', function(){
+      Analytics.track('whatsapp_followed');
+    });
+  }
   document.querySelectorAll('#dl-modal [data-modal-close], #wa-modal [data-modal-close]').forEach(function(el){
     el.addEventListener('click', function(e){
       if(el.tagName === 'A' && el.getAttribute('href') === '#install-notice') return; /* let it navigate too */
