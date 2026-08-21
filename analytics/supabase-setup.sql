@@ -52,7 +52,7 @@ security definer
 set search_path = public
 as $$
 begin
-  if p_password is distinct from '@moaz@' then
+  if p_password is distinct from 'غيّر_الباسورد_ده_CHANGE_ME' then
     raise exception 'unauthorized';
   end if;
 
@@ -72,8 +72,11 @@ begin
 end;
 $$;
 
--- 4) دالة تانية لجدول يومي (آخر 14 يوم) — تظهر في صفحة الإحصائيات كجدول بسيط
-create or replace function get_site_stats_daily(p_password text)
+-- 4) دالة تانية لجدول يومي (مدى قابل للتغيير) — تظهر في صفحة الإحصائيات كجدول ورسم بياني
+--    (لو كنت شغّلت نسخة قديمة من السكريبت ده قبل كده، السطر ده بيشيل التوقيع القديم
+--    عشان مايفضلش نسخة زيادة من الدالة في القاعدة)
+drop function if exists get_site_stats_daily(text);
+create or replace function get_site_stats_daily(p_password text, p_days int default 14)
 returns table (
   day                 date,
   page_views          bigint,
@@ -86,7 +89,7 @@ security definer
 set search_path = public
 as $$
 begin
-  if p_password is distinct from '@moaz@' then
+  if p_password is distinct from 'غيّر_الباسورد_ده_CHANGE_ME' then
     raise exception 'unauthorized';
   end if;
 
@@ -97,7 +100,7 @@ begin
     count(*) filter (where e.event_type = 'reached_download'),
     count(*) filter (where e.event_type = 'download_clicked'),
     count(*) filter (where e.event_type = 'whatsapp_followed')
-  from generate_series(current_date - interval '13 days', current_date, interval '1 day') d
+  from generate_series(current_date - (greatest(p_days,1) - 1) * interval '1 day', current_date, interval '1 day') d
   left join site_events e on e.created_at::date = d::date
   group by d
   order by d asc;
@@ -106,4 +109,4 @@ $$;
 
 -- السماح لمفتاح anon باستدعاء الدالتين بس (مش بقراءة الجدول مباشرة)
 grant execute on function get_site_stats(text) to anon;
-grant execute on function get_site_stats_daily(text) to anon;
+grant execute on function get_site_stats_daily(text, int) to anon;

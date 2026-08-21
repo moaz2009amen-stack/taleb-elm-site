@@ -1,68 +1,222 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="robots" content="noindex, nofollow">
-<title>إحصائيات طالب علم</title>
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>لوحة إحصائيات طالب علم</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js" defer></script>
 <style>
-  :root{
-    --navy:#13263e; --ink:#182338; --ink-soft:#5c6b82; --line:#e6eaf1;
-    --paper:#f6f8fb; --surface:#ffffff; --mint:#1fbf7a; --mint-dark:#149c62;
-    --mint-pale:#e6f9f1; --coral:#ff6b57; --coral-pale:#ffece9;
-    --shadow:0 10px 30px -12px rgba(19,38,62,.15);
-  }
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--paper);color:var(--ink);font-family:-apple-system,"Segoe UI",Tahoma,Arial,sans-serif;padding:20px}
-  .wrap{max-width:760px;margin:0 auto}
-  h1{font-size:20px;margin:8px 0 22px}
-  .gate{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:26px;box-shadow:var(--shadow);max-width:380px;margin:60px auto}
-  .gate input{width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--line);font-size:15px;margin-bottom:12px;font-family:inherit}
-  .gate button{width:100%;padding:12px;border-radius:12px;border:0;background:var(--mint);color:#fff;font-weight:700;font-size:15px;cursor:pointer}
-  .gate button:hover{background:var(--mint-dark)}
-  .err{color:var(--coral);font-size:13px;margin-top:10px;display:none}
-  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:22px}
-  .card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px}
-  .card b{display:block;font-size:26px;color:var(--navy)}
-  .card span{font-size:12.5px;color:var(--ink-soft)}
-  .card small{display:block;font-size:11px;color:var(--ink-soft);margin-top:2px}
-  .card.warn b{color:var(--coral)}
-  table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;font-size:13px}
-  th,td{padding:9px 10px;text-align:center;border-bottom:1px solid var(--line)}
-  th{background:var(--paper);color:var(--ink-soft);font-weight:700}
-  tr:last-child td{border-bottom:0}
-  .section-title{font-size:14px;font-weight:700;color:var(--navy);margin:26px 0 10px}
-  .refresh{font-size:12.5px;color:var(--ink-soft);text-decoration:underline;cursor:pointer;background:none;border:0;padding:0;margin-bottom:16px}
-  #dash{display:none}
-  .loading{text-align:center;color:var(--ink-soft);padding:40px 0}
+:root{
+  --paper:#F6F7FA; --surface:#FFFFFF; --ink:#131A2A; --ink-soft:#5B6479; --line:#E7EAF1;
+  --mint:#17B978; --mint-dark:#0E9D63; --mint-pale:#E7F8F0;
+  --navy:#16214A; --navy-pale:#E9EBF3;
+  --coral:#F45B69; --coral-pale:#FDE9EA;
+  --lavender:#8B7FE8; --lavender-pale:#EFEDFC;
+  --teal:#2FBF9F; --teal-pale:#E6F7F3;
+  --amber:#F5A524; --amber-pale:#FDF1DD;
+  --shadow:0 1px 2px rgba(19,26,42,.04), 0 12px 28px -14px rgba(19,26,42,.14);
+  --shadow-lg:0 20px 45px -20px rgba(19,26,42,.22);
+  --font-d:'Cairo',sans-serif; --font-b:'IBM Plex Sans Arabic',sans-serif;
+  --r-lg:22px; --r-md:16px; --r-sm:11px;
+  --ease:cubic-bezier(.19,1,.22,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--font-b);line-height:1.6;-webkit-font-smoothing:antialiased;min-height:100vh}
+img,svg{display:block}
+button{font:inherit;cursor:pointer}
+input{font:inherit}
+
+/* ===== شاشة الدخول ===== */
+#gate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.gate-box{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--shadow-lg);padding:38px 34px;max-width:380px;width:100%;text-align:center}
+.gate-icon{width:56px;height:56px;border-radius:16px;background:var(--navy-pale);color:var(--navy);display:flex;align-items:center;justify-content:center;margin:0 auto 18px}
+.gate-icon svg{width:26px;height:26px}
+.gate-box h1{font-family:var(--font-d);font-weight:800;font-size:19px;color:var(--navy);margin-bottom:6px}
+.gate-box p{color:var(--ink-soft);font-size:13px;margin-bottom:22px}
+.gate-box input{width:100%;padding:13px 16px;border-radius:var(--r-sm);border:1.5px solid var(--line);font-size:14.5px;margin-bottom:12px;transition:border-color .2s;text-align:center}
+.gate-box input:focus{outline:none;border-color:var(--mint)}
+.gate-box button{width:100%;padding:13px;border-radius:var(--r-sm);border:0;background:var(--navy);color:#fff;font-family:var(--font-d);font-weight:700;font-size:14.5px;transition:background .2s}
+.gate-box button:hover{background:#0f1836}
+.gate-box button:disabled{opacity:.6;cursor:default}
+.gate-err{color:var(--coral);font-size:12.5px;margin-top:12px;display:none;font-weight:600}
+
+/* ===== الداشبورد ===== */
+#dash{display:none;max-width:1080px;margin:0 auto;padding:28px 20px 60px}
+.dash-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:26px;flex-wrap:wrap}
+.dash-brand{display:flex;align-items:center;gap:12px}
+.dash-brand .mark{width:42px;height:42px;border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
+.dash-brand .mark img{width:100%;height:100%;object-fit:cover}
+.dash-brand h1{font-family:var(--font-d);font-weight:800;font-size:17px;color:var(--navy)}
+.dash-brand span{font-size:12px;color:var(--ink-soft)}
+.dash-actions{display:flex;align-items:center;gap:10px}
+.btn-ghost{display:inline-flex;align-items:center;gap:7px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 14px;font-size:12.5px;font-weight:600;color:var(--ink-soft);transition:all .2s}
+.btn-ghost:hover{border-color:var(--navy);color:var(--navy)}
+.btn-ghost svg{width:14px;height:14px}
+.btn-ghost.spin svg{animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.updated-at{font-size:11.5px;color:var(--ink-soft)}
+
+.range-tabs{display:flex;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px;margin-bottom:22px;width:fit-content}
+.range-tabs button{padding:8px 16px;border:0;background:transparent;border-radius:9px;font-size:12.5px;font-weight:700;color:var(--ink-soft);transition:all .2s}
+.range-tabs button.active{background:var(--navy);color:#fff}
+
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:22px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:18px 20px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.kpi .ic{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:12px}
+.kpi .ic svg{width:17px;height:17px}
+.kpi .val{font-family:var(--font-d);font-weight:800;font-size:26px;color:var(--navy);line-height:1.1}
+.kpi .lbl{font-size:12.5px;color:var(--ink-soft);margin-top:4px;font-weight:600}
+.kpi .sub{font-size:11px;color:var(--ink-soft);margin-top:6px;display:flex;align-items:center;gap:4px}
+.kpi.k-visitors .ic{background:var(--navy-pale);color:var(--navy)}
+.kpi.k-reached .ic{background:var(--amber-pale);color:var(--amber)}
+.kpi.k-downloaded .ic{background:var(--mint-pale);color:var(--mint-dark)}
+.kpi.k-abandoned .ic{background:var(--coral-pale);color:var(--coral)}
+.kpi.k-wa .ic{background:var(--teal-pale);color:var(--teal)}
+.kpi.k-conv .ic{background:var(--lavender-pale);color:var(--lavender)}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--shadow);padding:24px;margin-bottom:20px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.panel-head h2{font-family:var(--font-d);font-weight:800;font-size:15px;color:var(--navy)}
+.panel-head .legend{display:flex;gap:14px;font-size:11.5px;color:var(--ink-soft)}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend i{width:9px;height:9px;border-radius:3px;display:inline-block}
+
+.funnel{display:flex;flex-direction:column;gap:10px}
+.funnel-row{display:flex;align-items:center;gap:14px}
+.funnel-label{width:150px;flex-shrink:0;font-size:12.5px;font-weight:700;color:var(--navy)}
+.funnel-bar-wrap{flex:1;background:var(--paper);border-radius:8px;height:34px;position:relative;overflow:hidden}
+.funnel-bar{height:100%;border-radius:8px;display:flex;align-items:center;padding-inline-start:12px;color:#fff;font-family:var(--font-d);font-weight:700;font-size:12.5px;transition:width 1s var(--ease)}
+.funnel-pct{width:52px;flex-shrink:0;text-align:left;font-size:12px;color:var(--ink-soft);font-weight:700}
+
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:520px}
+th,td{padding:11px 10px;text-align:center;border-bottom:1px solid var(--line)}
+th{color:var(--ink-soft);font-weight:700;font-size:11.5px;text-transform:uppercase;letter-spacing:.3px}
+tbody tr:hover{background:var(--paper)}
+tbody tr:last-child td{border-bottom:0}
+td.day-cell{text-align:right;font-weight:700;color:var(--navy);font-family:var(--font-d)}
+
+.empty-state{text-align:center;padding:30px 0;color:var(--ink-soft);font-size:13px}
+.loading-screen{min-height:60vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--ink-soft);font-size:13px}
+.spinner{width:30px;height:30px;border:3px solid var(--line);border-top-color:var(--mint);border-radius:50%;animation:spin .7s linear infinite}
+.err-banner{background:var(--coral-pale);color:var(--coral);border-radius:var(--r-sm);padding:14px 16px;font-size:13px;font-weight:600;margin-bottom:18px;display:none}
+
+@media(max-width:640px){
+  .funnel-label{width:110px;font-size:11.5px}
+  .dash-head{flex-direction:column;align-items:flex-start}
+}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div id="gate" class="gate">
-    <h1 style="margin-top:0">دخول الإحصائيات</h1>
-    <input type="password" id="pw" placeholder="الباسورد">
-    <button id="pwBtn">دخول</button>
-    <div class="err" id="err">باسورد غلط، جرّب تاني</div>
+
+<div id="gate">
+  <div class="gate-box">
+    <div class="gate-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="10" width="4" height="10" rx="1"/><rect x="10" y="5" width="4" height="15" rx="1"/><rect x="16" y="13" width="4" height="7" rx="1"/></svg></div>
+    <h1>لوحة الإحصائيات</h1>
+    <p>الصفحة دي خاصة — ادخل الباسورد للمتابعة</p>
+    <input type="password" id="pw" placeholder="●●●●●●●●" autocomplete="off">
+    <button id="pwBtn"><span id="pwBtnText">دخول</span></button>
+    <div class="gate-err" id="gateErr">باسورد غلط، جرّب تاني</div>
+  </div>
+</div>
+
+<div id="dash">
+  <div class="dash-head">
+    <div class="dash-brand">
+      <span class="mark"><img src="../assets/app-icon.png" alt=""></span>
+      <div>
+        <h1>لوحة إحصائيات طالب علم</h1>
+        <span class="updated-at" id="updatedAt">—</span>
+      </div>
+    </div>
+    <div class="dash-actions">
+      <button class="btn-ghost" id="refreshBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 4v5h-5"/></svg> تحديث</button>
+      <button class="btn-ghost" id="logoutBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg> خروج</button>
+    </div>
   </div>
 
-  <div id="dash">
-    <h1>📊 إحصائيات طالب علم</h1>
-    <button class="refresh" id="refreshBtn">↻ تحديث الأرقام</button>
-    <div id="loading" class="loading">بيجيب البيانات...</div>
-    <div id="content" style="display:none">
-      <div class="cards">
-        <div class="card"><b id="c-visitors">–</b><span>زوّار فريدين</span><small id="c-views">– زيارة إجمالي</small></div>
-        <div class="card"><b id="c-reached">–</b><span>وصلوا لمرحلة التحميل</span><small id="c-reached-t">– مرة إجمالي</small></div>
-        <div class="card"><b id="c-downloaded">–</b><span>حمّلوا فعلاً</span><small id="c-downloaded-t">– مرة إجمالي</small></div>
-        <div class="card warn"><b id="c-abandoned">–</b><span>وصلوا وماحمّلوش</span></div>
-        <div class="card"><b id="c-wa">–</b><span>تابعوا قناة الواتساب</span><small id="c-wa-t">– مرة إجمالي</small></div>
+  <div class="err-banner" id="errBanner"></div>
+
+  <div class="range-tabs">
+    <button data-range="7" class="active">7 أيام</button>
+    <button data-range="14">14 يوم</button>
+    <button data-range="30">30 يوم</button>
+  </div>
+
+  <div class="loading-screen" id="loadingScreen">
+    <div class="spinner"></div>
+    <span>بيجيب البيانات...</span>
+  </div>
+
+  <div id="content" style="display:none">
+    <div class="kpi-grid">
+      <div class="kpi k-visitors">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+        <div class="val" id="c-visitors">–</div>
+        <div class="lbl">زوّار فريدين</div>
+        <div class="sub" id="c-views">– زيارة إجمالي</div>
       </div>
-      <div class="section-title">آخر 14 يوم</div>
-      <table>
-        <thead><tr><th>اليوم</th><th>زيارات</th><th>وصلوا للتحميل</th><th>حمّلوا</th><th>تابعوا واتساب</th></tr></thead>
-        <tbody id="dailyBody"></tbody>
-      </table>
+      <div class="kpi k-reached">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></div>
+        <div class="val" id="c-reached">–</div>
+        <div class="lbl">وصلوا لمرحلة التحميل</div>
+        <div class="sub" id="c-reached-t">– مرة إجمالي</div>
+      </div>
+      <div class="kpi k-downloaded">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"/></svg></div>
+        <div class="val" id="c-downloaded">–</div>
+        <div class="lbl">حمّلوا فعلاً</div>
+        <div class="sub" id="c-downloaded-t">– مرة إجمالي</div>
+      </div>
+      <div class="kpi k-abandoned">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg></div>
+        <div class="val" id="c-abandoned">–</div>
+        <div class="lbl">وصلوا وماحمّلوش</div>
+        <div class="sub">فرصة تحسين محتملة</div>
+      </div>
+      <div class="kpi k-wa">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15L2 22l5.2-1.4A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.1l-.3-.2-3.1.8.8-3-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1-.2.2-.6.8-.8 1-.1.2-.3.2-.5.1-.2-.1-1-.4-1.9-1.2-.7-.6-1.2-1.4-1.3-1.6-.1-.2 0-.4.1-.5.1-.1.2-.3.4-.4.1-.1.2-.3.2-.4.1-.2 0-.3 0-.5-.1-.1-.6-1.4-.8-1.9-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.2.2-.9.9-.9 2.2s1 2.5 1.1 2.7c.1.2 2 3 4.8 4.3.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.5-.3Z"/></svg></div>
+        <div class="val" id="c-wa">–</div>
+        <div class="lbl">تابعوا قناة الواتساب</div>
+        <div class="sub" id="c-wa-t">– مرة إجمالي</div>
+      </div>
+      <div class="kpi k-conv">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18M18 8l-5 5-4-4-4 4"/></svg></div>
+        <div class="val" id="c-conv">–</div>
+        <div class="lbl">نسبة التحويل</div>
+        <div class="sub">من الزائر لحد التحميل</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>مسار المستخدم (Funnel)</h2></div>
+      <div class="funnel" id="funnel"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2>الأداء اليومي</h2>
+        <div class="legend">
+          <span><i style="background:var(--navy)"></i> زيارات</span>
+          <span><i style="background:var(--amber)"></i> وصلوا للتحميل</span>
+          <span><i style="background:var(--mint)"></i> حمّلوا</span>
+        </div>
+      </div>
+      <canvas id="trendChart" height="90"></canvas>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>تفاصيل الجدول اليومي</h2></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>اليوم</th><th>زيارات</th><th>وصلوا للتحميل</th><th>حمّلوا</th><th>واتساب</th></tr></thead>
+          <tbody id="dailyBody"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
@@ -72,9 +226,19 @@
 const SUPABASE_URL = "https://nokgvbmngcgkfjlcmvmd.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_r96Xijbc6491_olkX2Gaqw_49BAVA48";
 
-var currentPassword = null;
+/* الباسورد بيتخزّن في sessionStorage بس (مش localStorage) عشان يفضل شغال
+   طول ما التاب مفتوح ومتقفلش، بس يتمسح لما تقفل التاب أو تدوس "خروج" —
+   بكده مش محتاج تدخل الباسورد كل مرة تعمل refresh وهو لسه أمان معقول
+   لصفحة شخصية زي دي. */
+const SESSION_KEY = 'ti_dash_pw';
 
-async function callRpc(fn, password){
+var chart = null;
+var lastDaily = [];
+
+function fmt(n){ return (n||0).toLocaleString('ar-EG'); }
+function pct(n,d){ return d ? Math.round((n/d)*100) : 0; }
+
+async function callRpc(fn, body){
   var res = await fetch(SUPABASE_URL + '/rest/v1/rpc/' + fn, {
     method: 'POST',
     headers: {
@@ -82,20 +246,82 @@ async function callRpc(fn, password){
       'apikey': SUPABASE_ANON_KEY,
       'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
     },
-    body: JSON.stringify({ p_password: password })
+    body: JSON.stringify(body)
   });
   if(!res.ok) throw new Error('unauthorized');
   return res.json();
 }
 
-function fmt(n){ return (n||0).toLocaleString('ar-EG'); }
+function renderFunnel(stats){
+  var steps = [
+    { label:'زوّار الموقع', value: stats.unique_visitors, color:'var(--navy)' },
+    { label:'وصلوا للتحميل', value: stats.unique_reached_download, color:'var(--amber)' },
+    { label:'حمّلوا فعلاً', value: stats.unique_downloaded, color:'var(--mint)' }
+  ];
+  var max = steps[0].value || 1;
+  var html = '';
+  steps.forEach(function(s){
+    var w = Math.max(pct(s.value, max), s.value > 0 ? 4 : 0);
+    html += '<div class="funnel-row">' +
+      '<div class="funnel-label">' + s.label + '</div>' +
+      '<div class="funnel-bar-wrap"><div class="funnel-bar" style="width:' + w + '%;background:' + s.color + '">' + fmt(s.value) + '</div></div>' +
+      '<div class="funnel-pct">' + pct(s.value, max) + '%</div>' +
+      '</div>';
+  });
+  document.getElementById('funnel').innerHTML = html;
+}
 
-async function loadStats(password){
-  document.getElementById('loading').style.display = 'block';
-  document.getElementById('content').style.display = 'none';
+function renderChart(daily){
+  var ctx = document.getElementById('trendChart');
+  if(!window.Chart || !ctx) return;
+  var labels = daily.map(function(d){
+    var dt = new Date(d.day);
+    return dt.toLocaleDateString('ar-EG', { day:'numeric', month:'short' });
+  });
+  if(chart) chart.destroy();
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        { label:'زيارات', data: daily.map(function(d){return d.page_views}), borderColor:'#16214A', backgroundColor:'rgba(22,33,74,.06)', tension:.35, fill:true, pointRadius:0, borderWidth:2 },
+        { label:'وصلوا للتحميل', data: daily.map(function(d){return d.reached_download}), borderColor:'#F5A524', backgroundColor:'rgba(245,165,36,.06)', tension:.35, fill:true, pointRadius:0, borderWidth:2 },
+        { label:'حمّلوا', data: daily.map(function(d){return d.downloaded}), borderColor:'#17B978', backgroundColor:'rgba(23,185,120,.08)', tension:.35, fill:true, pointRadius:0, borderWidth:2 }
+      ]
+    },
+    options: {
+      responsive:true,
+      plugins:{ legend:{ display:false } },
+      scales:{
+        x:{ grid:{ display:false }, ticks:{ font:{ family:'IBM Plex Sans Arabic', size:11 } } },
+        y:{ beginAtZero:true, grid:{ color:'#E7EAF1' }, ticks:{ font:{ family:'IBM Plex Sans Arabic', size:11 }, precision:0 } }
+      },
+      interaction:{ intersect:false, mode:'index' }
+    }
+  });
+}
+
+function renderDailyTable(daily){
+  var body = document.getElementById('dailyBody');
+  if(!daily.length){
+    body.innerHTML = '<tr><td colspan="5" class="empty-state">مفيش بيانات لسه</td></tr>';
+    return;
+  }
+  body.innerHTML = daily.slice().reverse().map(function(row){
+    var dt = new Date(row.day);
+    var label = dt.toLocaleDateString('ar-EG', { weekday:'short', day:'numeric', month:'short' });
+    return '<tr><td class="day-cell">' + label + '</td><td>' + fmt(row.page_views) + '</td><td>' + fmt(row.reached_download) + '</td><td>' + fmt(row.downloaded) + '</td><td>' + fmt(row.whatsapp_followed) + '</td></tr>';
+  }).join('');
+}
+
+async function loadStats(password, days){
+  var refreshBtn = document.getElementById('refreshBtn');
+  refreshBtn.classList.add('spin');
+  document.getElementById('errBanner').style.display = 'none';
   try{
-    var stats = (await callRpc('get_site_stats', password))[0];
-    var daily = await callRpc('get_site_stats_daily', password);
+    var stats = (await callRpc('get_site_stats', { p_password: password }))[0];
+    var daily = await callRpc('get_site_stats_daily', { p_password: password, p_days: days });
+    lastDaily = daily;
 
     document.getElementById('c-visitors').textContent = fmt(stats.unique_visitors);
     document.getElementById('c-views').textContent = fmt(stats.total_page_views) + ' زيارة إجمالي';
@@ -106,42 +332,85 @@ async function loadStats(password){
     document.getElementById('c-abandoned').textContent = fmt(stats.reached_but_not_downloaded);
     document.getElementById('c-wa').textContent = fmt(stats.unique_whatsapp_followed);
     document.getElementById('c-wa-t').textContent = fmt(stats.total_whatsapp_followed) + ' مرة إجمالي';
+    document.getElementById('c-conv').textContent = pct(stats.unique_downloaded, stats.unique_visitors) + '%';
 
-    var body = document.getElementById('dailyBody');
-    body.innerHTML = '';
-    daily.forEach(function(row){
-      var tr = document.createElement('tr');
-      tr.innerHTML = '<td>' + row.day + '</td><td>' + fmt(row.page_views) + '</td><td>' + fmt(row.reached_download) + '</td><td>' + fmt(row.downloaded) + '</td><td>' + fmt(row.whatsapp_followed) + '</td>';
-      body.appendChild(tr);
-    });
+    renderFunnel(stats);
+    renderChart(daily);
+    renderDailyTable(daily);
 
-    document.getElementById('loading').style.display = 'none';
+    document.getElementById('updatedAt').textContent = 'آخر تحديث: ' + new Date().toLocaleTimeString('ar-EG', { hour:'2-digit', minute:'2-digit' });
+    document.getElementById('loadingScreen').style.display = 'none';
     document.getElementById('content').style.display = 'block';
   }catch(e){
-    document.getElementById('loading').textContent = 'حصل خطأ في جلب البيانات. تأكد إنك شغّلت ملف الـ SQL في Supabase.';
+    document.getElementById('loadingScreen').style.display = 'none';
+    var banner = document.getElementById('errBanner');
+    banner.textContent = 'حصل خطأ في جلب البيانات — تأكد إنك شغّلت ملف الـ SQL في Supabase وإن الباسورد صح.';
+    banner.style.display = 'block';
+    document.getElementById('content').style.display = 'block';
   }
+  refreshBtn.classList.remove('spin');
 }
 
+function showDash(password){
+  document.getElementById('gate').style.display = 'none';
+  document.getElementById('dash').style.display = 'block';
+  var activeRange = document.querySelector('.range-tabs button.active');
+  loadStats(password, parseInt(activeRange.dataset.range, 10));
+}
+
+/* دخول */
 document.getElementById('pwBtn').addEventListener('click', async function(){
   var pw = document.getElementById('pw').value;
   if(!pw) return;
-  document.getElementById('err').style.display = 'none';
+  var btn = document.getElementById('pwBtn');
+  var btnText = document.getElementById('pwBtnText');
+  btn.disabled = true; btnText.textContent = 'بيتحقق...';
+  document.getElementById('gateErr').style.display = 'none';
   try{
-    await callRpc('get_site_stats', pw); /* just to validate password */
-    currentPassword = pw;
-    document.getElementById('gate').style.display = 'none';
-    document.getElementById('dash').style.display = 'block';
-    loadStats(pw);
+    await callRpc('get_site_stats', { p_password: pw });
+    try{ sessionStorage.setItem(SESSION_KEY, pw); }catch(e){}
+    showDash(pw);
   }catch(e){
-    document.getElementById('err').style.display = 'block';
+    document.getElementById('gateErr').style.display = 'block';
   }
+  btn.disabled = false; btnText.textContent = 'دخول';
 });
 document.getElementById('pw').addEventListener('keydown', function(e){
   if(e.key === 'Enter') document.getElementById('pwBtn').click();
 });
-document.getElementById('refreshBtn').addEventListener('click', function(){
-  if(currentPassword) loadStats(currentPassword);
+
+/* خروج */
+document.getElementById('logoutBtn').addEventListener('click', function(){
+  try{ sessionStorage.removeItem(SESSION_KEY); }catch(e){}
+  location.reload();
 });
+
+/* تحديث */
+document.getElementById('refreshBtn').addEventListener('click', function(){
+  var pw = sessionStorage.getItem(SESSION_KEY);
+  if(!pw) return;
+  var activeRange = document.querySelector('.range-tabs button.active');
+  loadStats(pw, parseInt(activeRange.dataset.range, 10));
+});
+
+/* تبديل المدى الزمني */
+document.querySelectorAll('.range-tabs button').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    document.querySelectorAll('.range-tabs button').forEach(function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+    var pw = sessionStorage.getItem(SESSION_KEY);
+    if(pw) loadStats(pw, parseInt(btn.dataset.range, 10));
+  });
+});
+
+/* لو الباسورد متخزّن في الجلسة، ادخل على طول من غير ما يتطلب تاني */
+(function(){
+  var saved = null;
+  try{ saved = sessionStorage.getItem(SESSION_KEY); }catch(e){}
+  if(saved){
+    showDash(saved);
+  }
+})();
 </script>
 </body>
 </html>
